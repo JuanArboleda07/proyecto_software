@@ -239,16 +239,16 @@ class Inventario:
 
             conn.commit()
     
-def eliminar_categoria(self, nombre_categoria):
-        with self._conectar() as conn:
-            cursor = conn.cursor()
-            
-            # 1. Validamos si hay productos usando esta categoría
-            cursor.execute("SELECT COUNT(*) FROM Producto WHERE categoria = ?", (nombre_categoria,))
-            if cursor.fetchone()[0] > 0:
-                raise ValueError(f"No se puede eliminar '{nombre_categoria}' porque tiene productos asociados. Reubica o elimina los productos primero.")
-            
-            # 2. Si está limpia, la eliminamos
-            cursor.execute("DELETE FROM Categoria WHERE nombre = ?", (nombre_categoria,))
-            conn.commit()    
+    def eliminar_categoria(self, nombre_categoria):
+            with self._conectar() as conn:
+                cursor = conn.cursor()
+                
+                # 1. Validamos si hay productos usando esta categoría
+                cursor.execute("SELECT COUNT(*) FROM Producto WHERE categoria = ?", (nombre_categoria,))
+                if cursor.fetchone()[0] > 0:
+                    raise ValueError(f"No se puede eliminar '{nombre_categoria}' porque tiene productos asociados. Reubica o elimina los productos primero.")
+                
+                # 2. Si está limpia, la eliminamos
+                cursor.execute("DELETE FROM Categoria WHERE nombre = ?", (nombre_categoria,))
+                conn.commit()    
                 

@@ -222,6 +222,23 @@ def pantalla_nuevo_pedido():
                 st.session_state.confirmar = False
                 st.rerun()
 
+@st.dialog("Aumentar existencias")
+def dialogo_aumentar_stock(id_prod, nombre_prod, stock_actual):
+    st.write(f"Producto: **{nombre_prod}**")
+    st.write(f"Stock actual: {stock_actual}")
+    
+    # Recuadro para poner el número
+    cantidad_agregar = st.number_input("Cantidad de productos a agregar", min_value=1, step=1, value=1)
+    
+    if st.button("Guardar cambios", type="primary"):
+        # Calculamos el nuevo stock y afectamos la base de datos
+        nuevo_stock = stock_actual + cantidad_agregar
+        inventario.actualizar_stock(id_prod, nuevo_stock)
+        
+        st.success("¡Inventario actualizado correctamente!")
+        st.rerun()
+
+
 def pantalla_productos():
 
     st.title("🏷️ Gestión de Productos y Categorías")
@@ -250,7 +267,7 @@ def pantalla_productos():
             with c1:
                 st.write(f"• {cat}")
             with c2:
-                if st.button("🗑", key=f"del_cat_{cat}"):
+                if st.button("❌", key=f"del_cat_{cat}"):
                     try:
                         inventario.eliminar_categoria(cat)
                         st.success(f"Categoría '{cat}' eliminada.")
@@ -326,8 +343,8 @@ def pantalla_productos():
     else:
 
         for producto in productos:
-
-            col1, col2, col3, col4, col5 = st.columns([3,2,2,2,1])
+            # Agregamos col6 a la lista de columnas
+            col1, col2, col3, col4, col5, col6 = st.columns([3,2,2,2,1,1])
 
             with col1:
                 st.write(producto.nombre)
@@ -341,17 +358,15 @@ def pantalla_productos():
             with col4:
                 st.write(f"Stock: {producto.stock}")
 
+            # BOTÓN PARA AUMENTAR STOCK
             with col5:
+                if st.button("➕", key=f"sumar_{producto.id_producto}"):
+                    dialogo_aumentar_stock(producto.id_producto, producto.nombre, producto.stock)
 
-                if st.button(
-                    "🗑",
-                    key=f"eliminar_{producto.id_producto}"
-                ):
-
-                    inventario.eliminar_producto(
-                        producto.id_producto
-                    )
-
+            # EL BOTÓN DE ELIMINAR 
+            with col6:
+                if st.button("❌", key=f"eliminar_{producto.id_producto}"):
+                    inventario.eliminar_producto(producto.id_producto)
                     st.rerun()
 
 def pantalla_pendientes():
