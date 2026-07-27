@@ -35,7 +35,7 @@ with st.sidebar:
     st.button("➕ Nuevo pedido", use_container_width=True, on_click=ir_a, args=("nuevo",))
     st.button("⏳ Pedidos pendientes", use_container_width=True, on_click=ir_a, args=("pendientes",))
     st.button("📦 Inventario", use_container_width=True, on_click=ir_a, args=("inventario",))
-    st.button("📦 Productos", use_container_width=True, on_click=ir_a, args=("Productos",))
+    st.button("🏷️ Productos", use_container_width=True, on_click=ir_a, args=("Productos",))
     st.button("💵 Ingresos del día", use_container_width=True, on_click=ir_a, args=("ingresos",))
     st.divider()
     st.metric("💵 Ingresos de hoy", f"${gestor_pedidos.obtener_ingresos_hoy():,.0f}")
