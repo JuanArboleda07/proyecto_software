@@ -450,23 +450,59 @@ def pantalla_inventario():
             )
 
     st.divider()
-    st.subheader("Reabastecer producto")
-    col1, col2, col3 = st.columns([2, 1, 1])
+    st.subheader("Actualizar Stock y Precio")
+    
+    # Creamos 4 columnas para que el formulario quede horizontal
+    col1, col2, col3, col4 = st.columns([3, 2, 2, 2])
+    
     with col1:
         producto_reabastecer = st.selectbox(
                 "Producto",
                 productos,
                 format_func=lambda p: p.nombre
         )
+        
     with col2:
-        cantidad_reabastecer = st.number_input("Cantidad a agregar", min_value=1, step=1)
+        # min_value=0 para que puedan dejarlo en 0 si solo quieren cambiar el precio
+        cantidad_reabastecer = st.number_input("Stock a agregar", min_value=0, step=1, value=0)
+        
     with col3:
+        # Cargamos el precio_unitario actual por defecto
+        nuevo_precio = st.number_input(
+            "Precio de Venta ($)", 
+            min_value=0.0, 
+            value=float(producto_reabastecer.precio_unitario), 
+            step=100.0
+        )
+        
+    with col4:
         st.write("")
         st.write("")
-        if st.button("📥 Agregar stock"):
-            inventario.actualizar_stock(producto_reabastecer.id_producto, producto_reabastecer.stock + cantidad_reabastecer)
-            st.success(f"Se agregaron {cantidad_reabastecer} unidades de {producto_reabastecer.nombre}")
-            st.rerun()
+        if st.button("💾 Guardar Cambios", use_container_width=True, type="primary"):
+            cambios_realizados = False
+            
+            # 1. Si agregaron stock, lo sumamos al actual en la base de datos
+            if cantidad_reabastecer > 0:
+                inventario.actualizar_stock(
+                    producto_reabastecer.id_producto, 
+                    producto_reabastecer.stock + cantidad_reabastecer
+                )
+                cambios_realizados = True
+                
+            # 2. Si el precio del input es diferente al precio actual, lo actualizamos
+            if nuevo_precio != producto_reabastecer.precio_unitario:
+                inventario.actualizar_precio(
+                    producto_reabastecer.id_producto, 
+                    nuevo_precio
+                )
+                cambios_realizados = True
+            
+            # 3. Mostrar mensajes según lo que haya pasado
+            if cambios_realizados:
+                st.success(f"¡Los datos de '{producto_reabastecer.nombre}' se actualizaron correctamente!")
+                st.rerun()
+            else:
+                st.info("No se detectaron cambios (el stock a agregar fue 0 y el precio es el mismo).")
 
 
 def pantalla_ingresos():

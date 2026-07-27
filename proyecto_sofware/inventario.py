@@ -197,6 +197,16 @@ class Inventario:
 
             conn.commit()
 
+    def actualizar_precio(self, id_producto, nuevo_precio):
+        with self._conectar() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE Producto
+                SET precio=?
+                WHERE id_producto=?
+            """, (nuevo_precio, id_producto))
+            conn.commit()
+
     def descontar(self, id_producto, cantidad):
 
         producto = self.buscar_por_id(id_producto)
