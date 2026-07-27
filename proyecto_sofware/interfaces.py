@@ -39,7 +39,7 @@ with st.sidebar:
     st.button("➕ Nuevo pedido", use_container_width=True, on_click=ir_a, args=("nuevo",))
     st.button("⏳ Pedidos pendientes", use_container_width=True, on_click=ir_a, args=("pendientes",))
     st.button("📦 Inventario", use_container_width=True, on_click=ir_a, args=("inventario",))
-    st.button("📦 Productos", use_container_width=True, on_click=ir_a, args=("Productos",))
+    st.button("🏷️ Productos", use_container_width=True, on_click=ir_a, args=("Productos",))
     st.button("💵 Ingresos del día", use_container_width=True, on_click=ir_a, args=("ingresos",))
     st.button("📖 Libreta de Deudas", use_container_width=True, on_click=ir_a, args=("deudas",))
     st.divider()
@@ -215,12 +215,14 @@ def pantalla_nuevo_pedido():
                         st.session_state.carrito
                     )
 
-                    st.success(f"Pedido #{id_pedido} registrado correctamente.")
-
                     st.session_state.carrito = []
                     st.session_state.confirmar = False
 
-                    st.rerun()
+                    dialogo_exito(
+                                "Pedido registrado",
+                                f"El pedido #{id_pedido} fue registrado correctamente.",
+                                lambda: ir_a("inicio")
+                                )
 
                 except ValueError as e:
                     st.error(e)
@@ -230,6 +232,25 @@ def pantalla_nuevo_pedido():
             if st.button("Cancelar"):
                 st.session_state.confirmar = False
                 st.rerun()
+
+@st.dialog("Aumentar existencias")
+def dialogo_aumentar_stock(id_prod, nombre_prod, stock_actual):
+    st.write(f"Producto: **{nombre_prod}**")
+    st.write(f"Stock actual: {stock_actual}")
+    
+    # Recuadro para poner el número
+    cantidad_agregar = st.number_input("Cantidad de productos a agregar", min_value=1, step=1, value=1)
+    
+    if st.button("Guardar cambios", type="primary"):
+        # Calculamos el nuevo stock y afectamos la base de datos
+        nuevo_stock = stock_actual + cantidad_agregar
+        inventario.actualizar_stock(id_prod, nuevo_stock)
+        
+        dialogo_exito(
+                     "Inventario actualizado",
+                     f"El producto '{nombre_prod}' ahora tiene {nuevo_stock} unidades."
+                     )
+
 
 def pantalla_productos():
 
@@ -245,8 +266,10 @@ def pantalla_productos():
         if st.button("Guardar categoría"):
             try:
                 inventario.agregar_categoria(nueva_cat)
-                st.success(f"Categoría '{nueva_cat}' agregada.")
-                st.rerun()
+                dialogo_exito(
+                             "Categoría creada",
+                             f"La categoría '{nueva_cat}' fue agregada correctamente."
+                             )                              
             except ValueError as e:
                 st.error(e)
                 
@@ -259,11 +282,13 @@ def pantalla_productos():
             with c1:
                 st.write(f"• {cat}")
             with c2:
-                if st.button("🗑", key=f"del_cat_{cat}"):
+                if st.button("❌", key=f"del_cat_{cat}"):
                     try:
                         inventario.eliminar_categoria(cat)
-                        st.success(f"Categoría '{cat}' eliminada.")
-                        st.rerun()
+                        dialogo_exito(
+                                     "Categoría eliminada",
+                                     f"La categoría '{cat}' fue eliminada correctamente."
+                                     )
                     except ValueError as e:
                         st.error(e)
             
@@ -335,8 +360,8 @@ def pantalla_productos():
     else:
 
         for producto in productos:
-
-            col1, col2, col3, col4, col5 = st.columns([3,2,2,2,1])
+            # Agregamos col6 a la lista de columnas
+            col1, col2, col3, col4, col5, col6 = st.columns([3,2,2,2,1,1])
 
             with col1:
                 st.write(producto.nombre)
@@ -350,17 +375,15 @@ def pantalla_productos():
             with col4:
                 st.write(f"Stock: {producto.stock}")
 
+            # BOTÓN PARA AUMENTAR STOCK
             with col5:
+                if st.button("➕", key=f"sumar_{producto.id_producto}"):
+                    dialogo_aumentar_stock(producto.id_producto, producto.nombre, producto.stock)
 
-                if st.button(
-                    "🗑",
-                    key=f"eliminar_{producto.id_producto}"
-                ):
-
-                    inventario.eliminar_producto(
-                        producto.id_producto
-                    )
-
+            # EL BOTÓN DE ELIMINAR 
+            with col6:
+                if st.button("❌", key=f"eliminar_{producto.id_producto}"):
+                    inventario.eliminar_producto(producto.id_producto)
                     st.rerun()
 
 def pantalla_pendientes():
@@ -390,8 +413,7 @@ def pantalla_pendientes():
                 )
                 
                 if st.button("✔️ Completar y Pagar", key=f"completar_{p['id']}", use_container_width=True):
-                    gestor_pedidos.completar_pedido(p["id"], metodo_seleccionado)
-                    
+                    # Ya no tocamos la base de datos aquí, solo preparamos la ventana
                     p["metodo_pago"] = metodo_seleccionado
                     
                     st.session_state.pedido_a_facturar = p
@@ -444,23 +466,61 @@ def pantalla_inventario():
             )
 
     st.divider()
-    st.subheader("Reabastecer producto")
-    col1, col2, col3 = st.columns([2, 1, 1])
+    st.subheader("Actualizar Stock y Precio")
+    
+    # Creamos 4 columnas para que el formulario quede horizontal
+    col1, col2, col3, col4 = st.columns([3, 2, 2, 2])
+    
     with col1:
         producto_reabastecer = st.selectbox(
                 "Producto",
                 productos,
                 format_func=lambda p: p.nombre
         )
+        
     with col2:
-        cantidad_reabastecer = st.number_input("Cantidad a agregar", min_value=1, step=1)
+        # min_value=0 para que puedan dejarlo en 0 si solo quieren cambiar el precio
+        cantidad_reabastecer = st.number_input("Stock a agregar", min_value=0, step=1, value=0)
+        
     with col3:
+        # Cargamos el precio_unitario actual por defecto
+        nuevo_precio = st.number_input(
+            "Precio de Venta ($)", 
+            min_value=0.0, 
+            value=float(producto_reabastecer.precio_unitario), 
+            step=100.0
+        )
+        
+    with col4:
         st.write("")
         st.write("")
-        if st.button("📥 Agregar stock"):
-            inventario.actualizar_stock(producto_reabastecer.id_producto, producto_reabastecer.stock + cantidad_reabastecer)
-            st.success(f"Se agregaron {cantidad_reabastecer} unidades de {producto_reabastecer.nombre}")
-            st.rerun()
+        if st.button("💾 Guardar Cambios", use_container_width=True, type="primary"):
+            cambios_realizados = False
+            
+            # 1. Si agregaron stock, lo sumamos al actual en la base de datos
+            if cantidad_reabastecer > 0:
+                inventario.actualizar_stock(
+                    producto_reabastecer.id_producto, 
+                    producto_reabastecer.stock + cantidad_reabastecer
+                )
+                cambios_realizados = True
+                
+            # 2. Si el precio del input es diferente al precio actual, lo actualizamos
+            if nuevo_precio != producto_reabastecer.precio_unitario:
+                inventario.actualizar_precio(
+                    producto_reabastecer.id_producto, 
+                    nuevo_precio
+                )
+                cambios_realizados = True
+            
+            # 3. Mostrar mensajes según lo que haya pasado
+            if cambios_realizados:
+                dialogo_exito(
+                              "Inventario actualizado",
+                              f"Se agregaron {cantidad_reabastecer} unidades de {producto_reabastecer.nombre}."
+                             )
+            else:
+                st.info("No se detectaron cambios (el stock a agregar fue 0 y el precio es el mismo).")
 
 def pantalla_ingresos():
     st.title("💵 Ingresos del día")
@@ -646,21 +706,52 @@ def mostrar_interfaz_facturacion():
     st.metric("TOTAL A COBRAR", f"${total_real:,.0f}")
     st.divider()
 
-    col_btn1, col_btn2 = st.columns(2)
-    with col_btn1:
-        if st.button("Confirmar y Emitir Factura", type="primary", use_container_width=True):
-            factura_emitida = gestor_factura.generar_factura(
-                pedido_dict=pedido,
-                metodo_pago=pedido["metodo_pago"]
-            )
-            st.success(f"🎉 ¡Factura {factura_emitida['nro_factura']} guardada con éxito!")
-            st.session_state.pedido_a_facturar = None  
-            st.button("Terminar y Actualizar Vista", on_click=st.rerun)
-            
-    with col_btn2:
-        if st.button("Omitir / Cancelar Factura", use_container_width=True):
-            st.session_state.pedido_a_facturar = None
-            st.rerun()
+    
+    # 1. Si el método de pago es por Transacción
+    if pedido["metodo_pago"] == "Transacción":
+        col_btn1, col_btn2 = st.columns(2)
+        
+        with col_btn1:
+            if st.button("✅ Se confirma la transferencia", type="primary", use_container_width=True):
+                # AHORA SÍ: Completamos el pedido en la base de datos
+                gestor_pedidos.completar_pedido(pedido["id"], pedido["metodo_pago"])
+                
+                # Y generamos la factura
+                factura_emitida = gestor_factura.generar_factura(
+                    pedido_dict=pedido,
+                    metodo_pago=pedido["metodo_pago"]
+                )
+                st.success(f"🎉 ¡Factura {factura_emitida['nro_factura']} guardada con éxito!")
+                st.session_state.pedido_a_facturar = None  
+                st.button("Terminar y Actualizar Vista", on_click=st.rerun, key="btn_actualizar_transaccion")
+                
+        with col_btn2:
+            if st.button("❌ Se rechazó la transferencia", use_container_width=True):
+                # Como nunca tocamos la base de datos, simplemente cerramos la ventana
+                st.session_state.pedido_a_facturar = None
+                st.rerun()
+                
+    # 2. Si es Efectivo o cualquier otro método de pago
+    else:
+        col_btn1, col_btn2 = st.columns(2)
+        
+        with col_btn1:
+            if st.button("Confirmar y Emitir Factura", type="primary", use_container_width=True):
+                # AHORA SÍ: Completamos el pedido en la base de datos
+                gestor_pedidos.completar_pedido(pedido["id"], pedido["metodo_pago"])
+                
+                factura_emitida = gestor_factura.generar_factura(
+                    pedido_dict=pedido,
+                    metodo_pago=pedido["metodo_pago"]
+                )
+                st.success(f"🎉 ¡Factura {factura_emitida['nro_factura']} guardada con éxito!")
+                st.session_state.pedido_a_facturar = None  
+                st.button("Terminar y Actualizar Vista", on_click=st.rerun, key="btn_actualizar_efectivo")
+                
+        with col_btn2:
+            if st.button("Omitir / Cancelar Factura", use_container_width=True):
+                st.session_state.pedido_a_facturar = None
+                st.rerun()
 
 PANTALLAS = {
     "inicio": pantalla_inicio,
@@ -676,3 +767,21 @@ if st.session_state.pedido_a_facturar is not None:
     mostrar_interfaz_facturacion()
 
 PANTALLAS[st.session_state.pagina]()
+
+
+# dialogos estandar
+@st.dialog("🍔 El Refugio")
+def dialogo_exito(titulo, mensaje, destino=None):
+
+    st.success(f"### {titulo}")
+
+    st.write(mensaje)
+
+    st.divider()
+
+    if st.button("Aceptar", use_container_width=True):
+
+        if callable(destino):
+            destino()
+
+        st.rerun()
