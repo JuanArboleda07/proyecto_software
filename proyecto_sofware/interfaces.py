@@ -1,9 +1,13 @@
 
 import streamlit as st
+import pandas as pd
+import os 
+import sqlite3
 from inventario import Inventario
 from pedido import Pedido
 from producto import Producto
 from factura import Factura
+from base_datos import conectar, agregar_cliente, actualizar_deuda
 
 if "inventario" not in st.session_state:
     st.session_state.inventario = Inventario()
@@ -37,6 +41,7 @@ with st.sidebar:
     st.button("📦 Inventario", use_container_width=True, on_click=ir_a, args=("inventario",))
     st.button("📦 Productos", use_container_width=True, on_click=ir_a, args=("Productos",))
     st.button("💵 Ingresos del día", use_container_width=True, on_click=ir_a, args=("ingresos",))
+    st.button("📖 Libreta de Deudas", use_container_width=True, on_click=ir_a, args=("deudas",))
     st.divider()
     st.metric("💵 Ingresos de hoy", f"${gestor_pedidos.obtener_ingresos_hoy():,.0f}")
 
@@ -74,7 +79,11 @@ def pantalla_inicio():
             st.markdown("### 💵 Ingresos del día")
             st.write("Consulta cuánto se ha acumulado hoy en ventas.")
             st.button("Ir a Ingresos", key="btn_ingresos", on_click=ir_a, args=("ingresos",))
-
+        
+        with st.container(border=True):
+            st.markdown("### 📖 Libreta de Deudas")
+            st.write("Registra, elimina y actualiza los registros de deudas de los clientes")
+            st.button("Ir a Deudas", key="btn_deudas", on_click=ir_a, args=("deudas",))
 
 def pantalla_nuevo_pedido():
     st.title("➕ Registrar nuevo pedido")
@@ -395,7 +404,6 @@ def pantalla_pendientes():
                     gestor_pedidos.eliminar_pedido(p["id"], devolver_stock=True)
                     st.rerun()
 
-
 def pantalla_inventario():
     st.title("📦 Inventario")
 
@@ -454,7 +462,6 @@ def pantalla_inventario():
             st.success(f"Se agregaron {cantidad_reabastecer} unidades de {producto_reabastecer.nombre}")
             st.rerun()
 
-
 def pantalla_ingresos():
     st.title("💵 Ingresos del día")
 
@@ -486,6 +493,136 @@ def pantalla_ingresos():
         "o se **elimina como despachado** (no aplica a cancelaciones con devolución de stock). "
         "Solo se muestran los movimientos del día actual según el reloj del sistema."
     )
+
+def pantalla_deudas():
+    st.title("📒 Libreta de Deudas")
+    col1, col2, col3 = st.columns(3)
+    
+    conexion = conectar()
+    cursor = conexion.cursor()
+    df = pd.read_sql_query("SELECT * from clientes", conexion)
+    print(df)
+    print(df.dtypes)
+    for i, valor in enumerate(df["deuda"]):
+        print(i, valor, type(valor))
+    df["deuda"] = df["deuda"].astype(int)
+    conexion.close()
+
+    with col1:
+        with st.popover("👤 Nuevo deudor"):
+                nombre = st.text_input("Nombre del cliente",placeholder="Nombre",key="nuevo_nombre")
+                telefono = st.text_input("Numero de Teléfono",placeholder="Teléfono",key="nuevo_telefono")
+                cedula = st.text_input("Numero de Cedula",placeholder="Cedula",key="nueva_cedula")
+                deuda = st.number_input("Deuda", min_value=0,max_value=200000, step=1, format="%d",key="nueva_deuda")
+
+                primera,segunda = st.columns(2)
+                with primera:
+                    guardar = st.button("💾 Guardar",key="guardar_cliente")
+                    if guardar:
+                        agregar_cliente(
+                            nombre,
+                            telefono,
+                            cedula,
+                            deuda
+                        )
+                        st.success("Cliente agregado")
+
+                with segunda:
+                    cancelar = st.button("❌ Cancelar",key="cancelar_cliente")
+                    if cancelar:
+                       
+                       st.session_state.pop("nuevo_nombre", None)
+                       st.session_state.pop("nuevo_telefono", None)
+                       st.session_state.pop("nueva_cedula", None)
+                       st.session_state.pop("nueva_deuda", None)
+                       st.rerun()
+
+    with col2:
+        with st.popover("💳 Actualizar saldo"):
+            busqueda_abono = st.text_input("Buscar cliente", placeholder="Escriba un nombre...",key="buscar_abono")
+
+            if busqueda_abono:
+                resultado = df[df["nombre"].str.contains(busqueda_abono, case=False, na=False)]
+            else:
+                resultado = df
+
+            if len(resultado) > 0:
+                cliente = st.selectbox("Cliente",resultado["nombre"],key="cliente_abono")
+
+                fila = resultado[resultado["nombre"] == cliente].iloc[0]
+                st.write(f"Deuda actual: ${fila['deuda']:,.0f}")
+                tipo = st.selectbox("Tipo de movimiento",["Abonar", "Agregar deuda"])
+                monto = st.number_input("Monto",min_value=0,step=1,format="%d",key="monto")
+                if tipo == "Abonar":
+                    saldo_nuevo = max(fila["deuda"] - monto, 0)
+                else:
+                    saldo_nuevo = fila["deuda"] + monto
+
+                st.write(f"Saldo nuevo: **${saldo_nuevo:,.0f}**")
+
+                
+
+                primera,segunda = st.columns(2)
+                with primera:
+                    guardar = st.button("💾 Actualizar saldo",key="guardar_abono")
+                    if guardar:                    
+                        if tipo == "Abonar":
+                            nueva_deuda = max(fila["deuda"] - monto, 0)
+                        else:
+                            nueva_deuda = fila["deuda"] + monto
+                        actualizar_deuda(fila["cedula"], nueva_deuda)
+
+                        st.success("Saldo actualizado correctamente")
+
+                with segunda:
+                    cancelar = st.button("❌ Cancelar",key="cancelar_abono")
+                    if cancelar:
+
+                        st.session_state.pop("buscar_abono",None)
+                        st.session_state.pop("cliente_abono",None)
+                        st.session_state.pop("monto",None)
+                
+                        st.rerun()
+            else:
+                st.info("No se encontró ningún cliente.")
+
+
+    busqueda_tabla = st.text_input(
+        "Buscar cliente", 
+        placeholder="Escriba un nombre...",key="buscar_tabla")
+
+    if busqueda_tabla:
+        filtro = df["nombre"].str.contains(busqueda_tabla, case=False, na=False)
+        tabla = df[filtro]
+    else:
+        tabla = df
+
+    tabla = tabla.sort_values("nombre")
+
+    st.dataframe(
+    tabla.style.apply(color_filas, axis=1),
+    use_container_width=True
+    )
+
+
+def color_filas(fila):
+
+    porcentaje = fila["deuda"]
+
+    if porcentaje >= 150000:
+        color = "#ff6b6b"      # rojo
+
+    elif porcentaje >= 100000:
+        color = "#ffd166"      # naranja
+
+    elif porcentaje >= 50000:
+        color = "#fff3b0"      # amarillo
+
+    else:
+        color = "#d8f3dc"      # verde
+
+    return [f"background-color:{color}"] * len(fila)
+   
 
 @st.dialog("Validación de Factura - El Refugio", width="large")
 def mostrar_interfaz_facturacion():
@@ -532,6 +669,7 @@ PANTALLAS = {
     "Productos": pantalla_productos,
     "inventario": pantalla_inventario,
     "ingresos": pantalla_ingresos,
+    "deudas": pantalla_deudas
 }
 
 if st.session_state.pedido_a_facturar is not None:
