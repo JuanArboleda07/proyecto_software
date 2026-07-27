@@ -206,12 +206,14 @@ def pantalla_nuevo_pedido():
                         st.session_state.carrito
                     )
 
-                    st.success(f"Pedido #{id_pedido} registrado correctamente.")
-
                     st.session_state.carrito = []
                     st.session_state.confirmar = False
 
-                    st.rerun()
+                    dialogo_exito(
+                                "Pedido registrado",
+                                f"El pedido #{id_pedido} fue registrado correctamente.",
+                                lambda: ir_a("inicio")
+                                )
 
                 except ValueError as e:
                     st.error(e)
@@ -235,8 +237,10 @@ def dialogo_aumentar_stock(id_prod, nombre_prod, stock_actual):
         nuevo_stock = stock_actual + cantidad_agregar
         inventario.actualizar_stock(id_prod, nuevo_stock)
         
-        st.success("¡Inventario actualizado correctamente!")
-        st.rerun()
+        dialogo_exito(
+                     "Inventario actualizado",
+                     f"El producto '{nombre_prod}' ahora tiene {nuevo_stock} unidades."
+                     )
 
 
 def pantalla_productos():
@@ -253,8 +257,10 @@ def pantalla_productos():
         if st.button("Guardar categoría"):
             try:
                 inventario.agregar_categoria(nueva_cat)
-                st.success(f"Categoría '{nueva_cat}' agregada.")
-                st.rerun()
+                dialogo_exito(
+                             "Categoría creada",
+                             f"La categoría '{nueva_cat}' fue agregada correctamente."
+                             )                              
             except ValueError as e:
                 st.error(e)
                 
@@ -270,8 +276,10 @@ def pantalla_productos():
                 if st.button("❌", key=f"del_cat_{cat}"):
                     try:
                         inventario.eliminar_categoria(cat)
-                        st.success(f"Categoría '{cat}' eliminada.")
-                        st.rerun()
+                        dialogo_exito(
+                                     "Categoría eliminada",
+                                     f"La categoría '{cat}' fue eliminada correctamente."
+                                     )
                     except ValueError as e:
                         st.error(e)
             
@@ -499,8 +507,10 @@ def pantalla_inventario():
             
             # 3. Mostrar mensajes según lo que haya pasado
             if cambios_realizados:
-                st.success(f"¡Los datos de '{producto_reabastecer.nombre}' se actualizaron correctamente!")
-                st.rerun()
+                dialogo_exito(
+                              "Inventario actualizado",
+                              f"Se agregaron {cantidad_reabastecer} unidades de {producto_reabastecer.nombre}."
+                             )
             else:
                 st.info("No se detectaron cambios (el stock a agregar fue 0 y el precio es el mismo).")
 
@@ -619,3 +629,21 @@ if st.session_state.pedido_a_facturar is not None:
     mostrar_interfaz_facturacion()
 
 PANTALLAS[st.session_state.pagina]()
+
+
+# dialogos estandar
+@st.dialog("🍔 El Refugio")
+def dialogo_exito(titulo, mensaje, destino=None):
+
+    st.success(f"### {titulo}")
+
+    st.write(mensaje)
+
+    st.divider()
+
+    if st.button("Aceptar", use_container_width=True):
+
+        if callable(destino):
+            destino()
+
+        st.rerun()
