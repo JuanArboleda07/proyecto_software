@@ -28,6 +28,22 @@ inventario = st.session_state.inventario
 gestor_pedidos = st.session_state.gestor_pedidos
 gestor_factura = st.session_state.gestor_factura
 
+@st.dialog("🍔 El Refugio")
+def dialogo_exito(titulo, mensaje, destino=None):
+
+    st.success(f"### {titulo}")
+
+    st.write(mensaje)
+
+    st.divider()
+
+    if st.button("Aceptar", use_container_width=True):
+
+        if callable(destino):
+            destino()
+
+        st.rerun()
+
 def ir_a(pagina: str):
     st.session_state.pagina = pagina
 
@@ -769,19 +785,3 @@ if st.session_state.pedido_a_facturar is not None:
 PANTALLAS[st.session_state.pagina]()
 
 
-# dialogos estandar
-@st.dialog("🍔 El Refugio")
-def dialogo_exito(titulo, mensaje, destino=None):
-
-    st.success(f"### {titulo}")
-
-    st.write(mensaje)
-
-    st.divider()
-
-    if st.button("Aceptar", use_container_width=True):
-
-        if callable(destino):
-            destino()
-
-        st.rerun()
