@@ -396,8 +396,7 @@ def pantalla_pendientes():
                 )
                 
                 if st.button("✔️ Completar y Pagar", key=f"completar_{p['id']}", use_container_width=True):
-                    gestor_pedidos.completar_pedido(p["id"], metodo_seleccionado)
-                    
+                    # Ya no tocamos la base de datos aquí, solo preparamos la ventana
                     p["metodo_pago"] = metodo_seleccionado
                     
                     st.session_state.pedido_a_facturar = p
@@ -524,21 +523,52 @@ def mostrar_interfaz_facturacion():
     st.metric("TOTAL A COBRAR", f"${total_real:,.0f}")
     st.divider()
 
-    col_btn1, col_btn2 = st.columns(2)
-    with col_btn1:
-        if st.button("Confirmar y Emitir Factura", type="primary", use_container_width=True):
-            factura_emitida = gestor_factura.generar_factura(
-                pedido_dict=pedido,
-                metodo_pago=pedido["metodo_pago"]
-            )
-            st.success(f"🎉 ¡Factura {factura_emitida['nro_factura']} guardada con éxito!")
-            st.session_state.pedido_a_facturar = None  
-            st.button("Terminar y Actualizar Vista", on_click=st.rerun)
-            
-    with col_btn2:
-        if st.button("Omitir / Cancelar Factura", use_container_width=True):
-            st.session_state.pedido_a_facturar = None
-            st.rerun()
+    
+    # 1. Si el método de pago es por Transacción
+    if pedido["metodo_pago"] == "Transacción":
+        col_btn1, col_btn2 = st.columns(2)
+        
+        with col_btn1:
+            if st.button("✅ Se confirma la transferencia", type="primary", use_container_width=True):
+                # AHORA SÍ: Completamos el pedido en la base de datos
+                gestor_pedidos.completar_pedido(pedido["id"], pedido["metodo_pago"])
+                
+                # Y generamos la factura
+                factura_emitida = gestor_factura.generar_factura(
+                    pedido_dict=pedido,
+                    metodo_pago=pedido["metodo_pago"]
+                )
+                st.success(f"🎉 ¡Factura {factura_emitida['nro_factura']} guardada con éxito!")
+                st.session_state.pedido_a_facturar = None  
+                st.button("Terminar y Actualizar Vista", on_click=st.rerun, key="btn_actualizar_transaccion")
+                
+        with col_btn2:
+            if st.button("❌ Se rechazó la transferencia", use_container_width=True):
+                # Como nunca tocamos la base de datos, simplemente cerramos la ventana
+                st.session_state.pedido_a_facturar = None
+                st.rerun()
+                
+    # 2. Si es Efectivo o cualquier otro método de pago
+    else:
+        col_btn1, col_btn2 = st.columns(2)
+        
+        with col_btn1:
+            if st.button("Confirmar y Emitir Factura", type="primary", use_container_width=True):
+                # AHORA SÍ: Completamos el pedido en la base de datos
+                gestor_pedidos.completar_pedido(pedido["id"], pedido["metodo_pago"])
+                
+                factura_emitida = gestor_factura.generar_factura(
+                    pedido_dict=pedido,
+                    metodo_pago=pedido["metodo_pago"]
+                )
+                st.success(f"🎉 ¡Factura {factura_emitida['nro_factura']} guardada con éxito!")
+                st.session_state.pedido_a_facturar = None  
+                st.button("Terminar y Actualizar Vista", on_click=st.rerun, key="btn_actualizar_efectivo")
+                
+        with col_btn2:
+            if st.button("Omitir / Cancelar Factura", use_container_width=True):
+                st.session_state.pedido_a_facturar = None
+                st.rerun()
 
 PANTALLAS = {
     "inicio": pantalla_inicio,
