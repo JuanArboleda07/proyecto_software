@@ -1,0 +1,15 @@
+[theme]
+# Le decimos a Streamlit que es un tema claro para que adapte otros detalles menores
+base = "light"
+
+# Color más oscuro: Para los botones principales
+primaryColor = "#5c3a21"
+
+# Color más claro: Para el fondo general de la aplicación
+backgroundColor = "#f5e6d3"
+
+# Color intermedio: Para la barra lateral de la izquierda (sidebar)
+secondaryBackgroundColor = "#b08868"
+
+# Color del texto: Un marrón muy oscuro, casi negro, para que resalte sobre el fondo claro
+textColor = "#26150c"

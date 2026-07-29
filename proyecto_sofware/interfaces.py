@@ -51,13 +51,12 @@ st.set_page_config(page_title="El Refugio", page_icon="🍔", layout="wide")
 
 with st.sidebar:
     st.title("🍔 El Refugio")
-    st.button("🏠 Inicio", use_container_width=True, on_click=ir_a, args=("inicio",))
-    st.button("➕ Nuevo pedido", use_container_width=True, on_click=ir_a, args=("nuevo",))
-    st.button("⏳ Pedidos pendientes", use_container_width=True, on_click=ir_a, args=("pendientes",))
-    st.button("📦 Inventario", use_container_width=True, on_click=ir_a, args=("inventario",))
-    st.button("🏷️ Productos", use_container_width=True, on_click=ir_a, args=("Productos",))
-    st.button("💵 Ingresos del día", use_container_width=True, on_click=ir_a, args=("ingresos",))
-    st.button("📖 Libreta de Deudas", use_container_width=True, on_click=ir_a, args=("deudas",))
+    st.button("🏠 Inicio", use_container_width=True, on_click=ir_a, args=("inicio",), type="primary")
+    st.button("➕ Nuevo pedido", use_container_width=True, on_click=ir_a, args=("nuevo",), type="primary")
+    st.button("⏳ Pedidos pendientes", use_container_width=True, on_click=ir_a, args=("pendientes",), type="primary")
+    st.button("📦 Inventario", use_container_width=True, on_click=ir_a, args=("inventario",), type="primary")
+    st.button("📦 Productos", use_container_width=True, on_click=ir_a, args=("Productos",), type="primary")
+    st.button("💵 Ingresos del día", use_container_width=True, on_click=ir_a, args=("ingresos",), type="primary")
     st.divider()
     st.metric("💵 Ingresos de hoy", f"${gestor_pedidos.obtener_ingresos_hoy():,.0f}")
 
@@ -73,33 +72,33 @@ def pantalla_inicio():
         with st.container(border=True):
             st.markdown("### ➕ Nuevo pedido")
             st.write("Registra un pedido nuevo y descuenta automáticamente del inventario.")
-            st.button("Ir a Nuevo pedido", key="btn_nuevo", on_click=ir_a, args=("nuevo",))
+            st.button("Ir a Nuevo pedido", key="btn_nuevo", on_click=ir_a, args=("nuevo",), type="primary")
 
         with st.container(border=True):
             st.markdown("### 📦 Inventario")
             st.write("Consulta el stock actual y reabastece productos.")
-            st.button("Ir a Inventario", key="btn_inventario", on_click=ir_a, args=("inventario",))
+            st.button("Ir a Inventario", key="btn_inventario", on_click=ir_a, args=("inventario",), type="primary")
 
         with st.container(border=True):
             st.markdown("### 🏷️ Productos y Categorias")
             st.write("Agregar nuevos productos y ctegorias de estos.")
-            st.button("Ir a Productos", key="btn_Productos", on_click=ir_a, args=("Productos",))
+            st.button("Ir a Productos", key="btn_Productos", on_click=ir_a, args=("Productos",), type="primary")
 
     with col2:
         with st.container(border=True):
             st.markdown("### ⏳ Pedidos pendientes")
             st.write("Revisa, completa o cancela los pedidos en curso.")
-            st.button("Ir a Pendientes", key="btn_pendientes", on_click=ir_a, args=("pendientes",))
+            st.button("Ir a Pendientes", key="btn_pendientes", on_click=ir_a, args=("pendientes",), type="primary")
 
         with st.container(border=True):
             st.markdown("### 💵 Ingresos del día")
             st.write("Consulta cuánto se ha acumulado hoy en ventas.")
-            st.button("Ir a Ingresos", key="btn_ingresos", on_click=ir_a, args=("ingresos",))
+            st.button("Ir a Ingresos", key="btn_ingresos", on_click=ir_a, args=("ingresos",), type="primary")
         
         with st.container(border=True):
             st.markdown("### 📖 Libreta de Deudas")
             st.write("Registra, elimina y actualiza los registros de deudas de los clientes")
-            st.button("Ir a Deudas", key="btn_deudas", on_click=ir_a, args=("deudas",))
+            st.button("Ir a Deudas", key="btn_deudas", on_click=ir_a, args=("deudas",), type="primary")
 
 def pantalla_nuevo_pedido():
     st.title("➕ Registrar nuevo pedido")
