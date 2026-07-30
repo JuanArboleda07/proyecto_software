@@ -59,6 +59,7 @@ with st.sidebar:
     st.button("📦 Inventario", use_container_width=True, on_click=ir_a, args=("inventario",), type="primary")
     st.button("🏷️ Productos", use_container_width=True, on_click=ir_a, args=("Productos",), type="primary")
     st.button("💵 Ingresos del día", use_container_width=True, on_click=ir_a, args=("ingresos",), type="primary")
+    st.button("📖 Libreta de Deudas", use_container_width=True, on_click=ir_a, args=("deudas",), type="primary")
     st.divider()
     st.metric("💵 Ingresos de hoy", f"${gestor_pedidos.obtener_ingresos_hoy():,.0f}")
 
@@ -438,14 +439,14 @@ def pantalla_pendientes():
                 st.write(f"💰 Total: ${p['total']:,.0f}  |  🕐 {p['fecha']}")
                 
             with c2:
+                # --- AQUÍ AGREGAMOS "Fiado" A LA LISTA ---
                 metodo_seleccionado = st.selectbox(
                     "Forma de pago", 
-                    ["Físico (Efectivo)", "Transacción"], 
+                    ["Físico (Efectivo)", "Transacción", "Fiado"], 
                     key=f"pago_{p['id']}"  
                 )
                 
                 if st.button("✔️ Completar y Pagar", key=f"completar_{p['id']}", use_container_width=True):
-                    # Ya no tocamos la base de datos aquí, solo preparamos la ventana
                     p["metodo_pago"] = metodo_seleccionado
                     
                     st.session_state.pedido_a_facturar = p
@@ -738,17 +739,13 @@ def mostrar_interfaz_facturacion():
     st.metric("TOTAL A COBRAR", f"${total_real:,.0f}")
     st.divider()
 
-    
     # 1. Si el método de pago es por Transacción
     if pedido["metodo_pago"] == "Transacción":
         col_btn1, col_btn2 = st.columns(2)
         
         with col_btn1:
             if st.button("✅ Se confirma la transferencia", type="primary", use_container_width=True):
-                # AHORA SÍ: Completamos el pedido en la base de datos
                 gestor_pedidos.completar_pedido(pedido["id"], pedido["metodo_pago"])
-                
-                # Y generamos la factura
                 factura_emitida = gestor_factura.generar_factura(
                     pedido_dict=pedido,
                     metodo_pago=pedido["metodo_pago"]
@@ -759,17 +756,68 @@ def mostrar_interfaz_facturacion():
                 
         with col_btn2:
             if st.button("❌ Se rechazó la transferencia", use_container_width=True):
-                # Como nunca tocamos la base de datos, simplemente cerramos la ventana
                 st.session_state.pedido_a_facturar = None
                 st.rerun()
+
+    # 2. NUEVO: Si el método de pago es Fiado
+    elif pedido["metodo_pago"] == "Fiado":
+        st.warning("⚠️ Se seleccionó pago Fiado. Por favor, asigne esta deuda a un cliente registrado.")
+        
+        # Consultar la base de datos de clientes
+        conexion = conectar()
+        df_clientes = pd.read_sql_query("SELECT * from clientes", conexion)
+        conexion.close()
+        
+        if df_clientes.empty:
+            st.error("No hay clientes registrados en la Libreta de Deudas. Debe crear al deudor primero.")
+            if st.button("Volver", use_container_width=True):
+                st.session_state.pedido_a_facturar = None
+                st.rerun()
+        else:
+            # Seleccionar al cliente al que se le va a fiar
+            cliente_elegido = st.selectbox("Seleccione el cliente:", df_clientes["nombre"], key="select_fiado")
+            
+            # Obtener datos del cliente elegido
+            fila_cliente = df_clientes[df_clientes["nombre"] == cliente_elegido].iloc[0]
+            deuda_actual = int(fila_cliente["deuda"])
+            nueva_deuda_proyectada = deuda_actual + total_real
+            
+            st.write(f"**Deuda actual de {cliente_elegido}:** ${deuda_actual:,.0f}")
+            st.write(f"**Nueva deuda proyectada:** ${nueva_deuda_proyectada:,.0f}")
+            
+            # Validación estricta del límite de 200,000
+            if nueva_deuda_proyectada > 200000:
+                st.error(f"❌ Transacción denegada. El límite máximo es de $200,000. (Exceso de ${nueva_deuda_proyectada - 200000:,.0f}).")
+                if st.button("Cancelar operación", use_container_width=True, key="btn_cancel_exceso"):
+                    st.session_state.pedido_a_facturar = None
+                    st.rerun()
+            else:
+                col_btn1, col_btn2 = st.columns(2)
+                with col_btn1:
+                    if st.button("✅ Confirmar Fiado", type="primary", use_container_width=True):
+                        # Actualizar deuda en la BD
+                        actualizar_deuda(fila_cliente["cedula"], nueva_deuda_proyectada)
+                        # Completar el pedido
+                        gestor_pedidos.completar_pedido(pedido["id"], pedido["metodo_pago"])
+                        # Emitir comprobante/factura
+                        factura_emitida = gestor_factura.generar_factura(
+                            pedido_dict=pedido,
+                            metodo_pago=pedido["metodo_pago"]
+                        )
+                        st.success(f"🎉 Pedido fiado correctamente. ¡Deuda de {cliente_elegido} actualizada!")
+                        st.session_state.pedido_a_facturar = None  
+                        st.button("Terminar y Actualizar Vista", on_click=st.rerun, key="btn_actualizar_fiado")
+                with col_btn2:
+                    if st.button("❌ Cancelar", use_container_width=True, key="btn_cancel_fiado"):
+                        st.session_state.pedido_a_facturar = None
+                        st.rerun()
                 
-    # 2. Si es Efectivo o cualquier otro método de pago
+    # 3. Si es Efectivo o cualquier otro método de pago
     else:
         col_btn1, col_btn2 = st.columns(2)
         
         with col_btn1:
             if st.button("Confirmar y Emitir Factura", type="primary", use_container_width=True):
-                # AHORA SÍ: Completamos el pedido en la base de datos
                 gestor_pedidos.completar_pedido(pedido["id"], pedido["metodo_pago"])
                 
                 factura_emitida = gestor_factura.generar_factura(
