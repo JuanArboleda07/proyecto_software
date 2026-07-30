@@ -1,7 +1,7 @@
 import json
 import sqlite3
 from datetime import datetime
-
+from zoneinfo import ZoneInfo
 from inventario import Inventario
 from producto import Producto
 
@@ -82,7 +82,8 @@ class Pedido:
 
         total = sum(p.subtotal for p in productos)
 
-        fecha = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        # ---HORA DE COLOMBIA ---
+        fecha = datetime.now(ZoneInfo("America/Bogota")).strftime("%Y-%m-%d %H:%M:%S")
         productos_json = self._productos_a_json(productos)
 
         with self._conectar() as conn:
@@ -129,7 +130,8 @@ class Pedido:
         ]
 
     def _registrar_ingreso(self, id_pedido: int, monto: float, origen: str):
-        fecha = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        # --- HORA DE COLOMBIA ---
+        fecha = datetime.now(ZoneInfo("America/Bogota")).strftime("%Y-%m-%d %H:%M:%S")
         with self._conectar() as conn:
             cursor = conn.cursor()
             cursor.execute("""
@@ -138,11 +140,7 @@ class Pedido:
             """, (id_pedido, monto, origen, fecha))
             conn.commit()
 
-
     def completar_pedido(self, id_pedido: int, metodo_pago: str) -> bool:
-        """Marca un pedido como completado, registra el método de pago y acumula el ingreso."""
-        
-        # 1. Primero buscamos si el pedido existe para saber el total del dinero
         with self._conectar() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT total, estado FROM Pedido WHERE id = ?", (id_pedido,))
@@ -158,26 +156,23 @@ class Pedido:
             print(f"⚠️ El pedido #{id_pedido} ya no está pendiente (Estado: {estado_actual}).")
             return False
 
-        # 2. Si todo está bien, abrimos una nueva conexión para actualizar los datos
-        hoy = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        # --- HORA DE COLOMBIA ---
+        hoy = datetime.now(ZoneInfo("America/Bogota")).strftime("%Y-%m-%d %H:%M:%S")
         with self._conectar() as conn:
             cursor = conn.cursor()
             
-            # COMANDO SQL UPDATE: Modificamos el estado y el metodo_pago DEL pedido con el id indicado
             cursor.execute("""
                 UPDATE Pedido
                 SET estado = 'completado',
                     metodo_pago = ?
                 WHERE id = ?
-            """, (metodo_pago, id_pedido))   # Pasamos las variables en orden para los '?'
+            """, (metodo_pago, id_pedido))
             
-            # También lo registramos en la tabla de Ingresos del día
             cursor.execute("""
                 INSERT INTO Ingresos (id_pedido, monto, origen, fecha)
                 VALUES (?, ?, 'completado', ?)
             """, (id_pedido, total, hoy))
             
-            # ¡CRUCIAL! Confirmamos que se guarden ambos cambios en el archivo físico pedidos.db
             conn.commit()
 
         print(f"✅ Pedido #{id_pedido} pagado con [{metodo_pago}]. Ingreso acumulado: ${total:,.0f}")
@@ -234,11 +229,8 @@ class Pedido:
 
 
     def obtener_ingresos_hoy(self) -> float:
-        """
-        Suma los montos de la tabla Ingresos (completados + eliminados)
-        cuya fecha corresponde al día actual del computador.
-        """
-        hoy = datetime.now().strftime("%Y-%m-%d")
+        # ---HORA DE COLOMBIA ---
+        hoy = datetime.now(ZoneInfo("America/Bogota")).strftime("%Y-%m-%d")
         with self._conectar() as conn:
             cursor = conn.cursor()
             cursor.execute("""
@@ -250,8 +242,8 @@ class Pedido:
         return float(resultado)
 
     def obtener_movimientos_hoy(self) -> list:
-        """Detalle de los movimientos de ingreso (completados/eliminados) del día actual."""
-        hoy = datetime.now().strftime("%Y-%m-%d")
+        # --- HORA DE COLOMBIA ---
+        hoy = datetime.now(ZoneInfo("America/Bogota")).strftime("%Y-%m-%d")
         with self._conectar() as conn:
             cursor = conn.cursor()
             cursor.execute("""
