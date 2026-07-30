@@ -3,6 +3,7 @@ import streamlit as st
 import pandas as pd
 import os 
 import sqlite3
+import time
 from inventario import Inventario
 from pedido import Pedido
 from producto import Producto
@@ -261,10 +262,15 @@ def dialogo_aumentar_stock(id_prod, nombre_prod, stock_actual):
         nuevo_stock = stock_actual + cantidad_agregar
         inventario.actualizar_stock(id_prod, nuevo_stock)
         
-        dialogo_exito(
-                     "Inventario actualizado",
-                     f"El producto '{nombre_prod}' ahora tiene {nuevo_stock} unidades."
-                     )
+        # --- SOLUCIÓN APLICADA AQUÍ ---
+        # 1. Mostramos el mensaje de éxito directamente en la ventana actual
+        st.success(f"El producto '{nombre_prod}' ahora tiene {nuevo_stock} unidades.")
+        
+        # 2. Hacemos una pausa muy breve para que el usuario alcance a leer el mensaje
+        time.sleep(1.5)
+        
+        # 3. Recargamos la aplicación (esto cerrará el diálogo y actualizará la tabla)
+        st.rerun()
 
 
 def pantalla_productos():
