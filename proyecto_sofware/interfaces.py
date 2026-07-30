@@ -101,6 +101,12 @@ def pantalla_inicio():
             st.write("Registra, elimina y actualiza los registros de deudas de los clientes")
             st.button("Ir a Deudas", key="btn_deudas", on_click=ir_a, args=("deudas",), type="primary")
 
+    # --- ENLACE AL MANUAL ---
+    st.divider() 
+    
+    st.info("📖 [**¿Cómo hacer para que funcione el sistema? (Manual de Usuario)**](https://drive.google.com/file/d/1tglW6ttZ_MVGs0wapRUSZ99dCctMfINR/view?usp=sharing)")
+
+
 def pantalla_nuevo_pedido():
     st.title("➕ Registrar nuevo pedido")
 
