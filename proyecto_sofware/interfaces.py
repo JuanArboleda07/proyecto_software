@@ -130,13 +130,17 @@ def pantalla_nuevo_pedido():
                     f"{p.nombre} | Stock: {p.stock} | ${p.precio_unitario:,.0f}")
 
     with col2:
-        cantidad = st.number_input(
-                               "Cantidad",
-                               min_value=1,
-                               max_value=producto.stock,
-                               value=1
-                                      )             
-
+            try:
+                cantidad = st.number_input(
+                    "Cantidad",
+                     min_value=1,
+                     max_value=producto.stock,
+                     value=1
+                                          )
+            except StreamlitValueAboveMaxError:
+                st.error("No hay en el stock")
+                cantidad = 0
+                
     if st.button("➕ Agregar al pedido"):
 
         encontrado = False
