@@ -9,6 +9,7 @@ from pedido import Pedido
 from producto import Producto
 from factura import Factura
 from base_datos import conectar, agregar_cliente, actualizar_deuda
+from streamlit.errors import StreamlitValueAboveMaxError
 
 if "inventario" not in st.session_state:
     st.session_state.inventario = Inventario()
@@ -56,7 +57,7 @@ with st.sidebar:
     st.button("➕ Nuevo pedido", use_container_width=True, on_click=ir_a, args=("nuevo",), type="primary")
     st.button("⏳ Pedidos pendientes", use_container_width=True, on_click=ir_a, args=("pendientes",), type="primary")
     st.button("📦 Inventario", use_container_width=True, on_click=ir_a, args=("inventario",), type="primary")
-    st.button("📦 Productos", use_container_width=True, on_click=ir_a, args=("Productos",), type="primary")
+    st.button("🏷️ Productos", use_container_width=True, on_click=ir_a, args=("Productos",), type="primary")
     st.button("💵 Ingresos del día", use_container_width=True, on_click=ir_a, args=("ingresos",), type="primary")
     st.divider()
     st.metric("💵 Ingresos de hoy", f"${gestor_pedidos.obtener_ingresos_hoy():,.0f}")
